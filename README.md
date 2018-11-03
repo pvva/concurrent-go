@@ -25,28 +25,28 @@ Each task is just a function: `type Task func()`
 When creating a pool you should specify it's size. **Pool does not resize automatically.**
 
 ```go
-	pool := NewTaskPool(200)
+    pool := NewTaskPool(200)
 
-	...
+    ...
 
-	immediate := pool.Submit(func() {
-	    // do your stuff here
-	})
-	if !immediate {
-		// submit was waiting in queue
-	}
+    immediate := pool.Submit(func() {
+        // do your stuff here
+    })
+    if !immediate {
+        // submit was waiting in queue
+    }
 
-	...
+    ...
 
     // next call will wait if pool is full
-	pool.SubmitSync(func() {
+    pool.SubmitSync(func() {
         // do your stuff here
     })
 
-	...
+    ...
 
-	pool.WaitForAll()
-	pool.Shutdown()
+    pool.WaitForAll()
+    pool.Shutdown()
 ```
 
 Reasoning for task pool is simple: if you start spawning goroutines for every task you have, you may quickly exhaust available CPU and run into starvation.
