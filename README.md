@@ -3,7 +3,7 @@ This repo contains few things that proved their usefulness but are absent in sta
 ## AtomicBoolean
 Lets you atomically set and check for a boolean value.
 ```go
-    notDone := AtomicBooleanOf(true)
+    notDone := concurrent.AtomicBooleanOf(true)
 
     ...
 
@@ -25,7 +25,7 @@ Each task is just a function: `type Task func()`
 When creating a pool you should specify it's size. **Pool does not resize automatically.**
 
 ```go
-    pool := NewTaskPool(200)
+    pool := concurrent.NewTaskPool(200)
 
     ...
 
@@ -54,7 +54,7 @@ In order to avoid this situation, maximum amount of concurrent tasks should be l
 
 You can provide error handler function for task pool.
 ```go
-    pool := NewTaskPool(20, func(err interface{}) {
+    pool := concurrent.NewTaskPool(20, func(err interface{}) {
     	// handle error
     })
 ```
@@ -66,7 +66,7 @@ pool will propagate `panic` to your code, which might crash if there is no panic
 ## Semaphore
 Classic semaphore. Releasing empty semaphore doesn't block (it actually doesn't do anything).
 ```
-    sem := NewSemaphore(5)
+    sem := concurrent.NewSemaphore(5)
     sem.Acquire(5)
 
     ...
@@ -92,7 +92,7 @@ Classic semaphore. Releasing empty semaphore doesn't block (it actually doesn't 
 ## Blocking Queue
 Reasonably unlimited queue which will block at attempt to get the element from it if it is empty.
 ```
-    queue := NewBlockingQueue()
+    queue := concurrent.NewBlockingQueue()
 
     // if queue is drained, then success is false and no data is added to queue
     success := queue.Put(5)
@@ -121,4 +121,12 @@ Reasonably unlimited queue which will block at attempt to get the element from i
 
     // reactivate drained queue
     queue.Reset()
+```
+
+## Limited Counter
+Simple counter, that resets itself when reaching the limit. Can be safely used by concurrent routines.
+```
+    lc := concurrent.NewLimitedCounter(20)
+    ...
+    nextValue := lc.Next()
 ```
