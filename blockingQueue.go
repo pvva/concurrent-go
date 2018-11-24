@@ -1,12 +1,11 @@
 package concurrent
 
 import (
-	"container/list"
 	"sync"
 )
 
 type BlockingQueue struct {
-	queue    *list.List
+	queue    []interface{}
 	lock     sync.Mutex
 	condLock sync.Mutex
 	cond     *sync.Cond
@@ -15,7 +14,7 @@ type BlockingQueue struct {
 
 func NewBlockingQueue() *BlockingQueue {
 	bq := &BlockingQueue{
-		queue: list.New(),
+		queue: []interface{}{},
 	}
 	bq.cond = sync.NewCond(&bq.condLock)
 
@@ -30,7 +29,7 @@ func (bq *BlockingQueue) Put(data interface{}) bool {
 
 		return false
 	}
-	bq.queue.PushBack(data)
+	bq.queue = append(bq.queue, data)
 	bq.lock.Unlock()
 
 	bq.cond.Signal()
@@ -47,12 +46,12 @@ func (bq *BlockingQueue) Get(nonblocking ...bool) (interface{}, bool) {
 
 		return nil, true
 	}
-	if bq.queue.Len() > 0 {
-		e := bq.queue.Front()
-		bq.queue.Remove(e)
+	if len(bq.queue) > 0 {
+		e := bq.queue[0]
+		bq.queue = bq.queue[1:]
 		bq.lock.Unlock()
 
-		return e.Value, false
+		return e, false
 	}
 	bq.lock.Unlock()
 
@@ -72,7 +71,7 @@ func (bq *BlockingQueue) Get(nonblocking ...bool) (interface{}, bool) {
 // Drained queue will not receive any data.
 func (bq *BlockingQueue) Drain() {
 	bq.lock.Lock()
-	bq.queue.Init()
+	bq.queue = bq.queue[:0]
 	bq.drained = true
 	bq.lock.Unlock()
 
@@ -89,7 +88,7 @@ func (bq *BlockingQueue) Reset() {
 // Queue size.
 func (bq *BlockingQueue) Len() int {
 	bq.lock.Lock()
-	l := bq.queue.Len()
+	l := len(bq.queue)
 	bq.lock.Unlock()
 
 	return l
