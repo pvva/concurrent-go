@@ -41,7 +41,12 @@ func TestLimitedCounter(t *testing.T) {
 func BenchmarkLimitedCounter(b *testing.B) {
 	lc := NewLimitedCounter(10)
 
+	c := 0
+	e := 0
+
 	for n := 0; n < b.N; n++ {
-		lc.Next()
+		c = lc.Next()
 	}
+
+	e += c
 }

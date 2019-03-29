@@ -5,18 +5,17 @@ import (
 )
 
 type BlockingQueue struct {
-	queue    []interface{}
-	lock     sync.Mutex
-	condLock sync.Mutex
-	cond     *sync.Cond
-	drained  bool
+	queue   []interface{}
+	lock    sync.Mutex
+	cond    *sync.Cond
+	drained bool
 }
 
 func NewBlockingQueue() *BlockingQueue {
 	bq := &BlockingQueue{
 		queue: []interface{}{},
 	}
-	bq.cond = sync.NewCond(&bq.condLock)
+	bq.cond = sync.NewCond(&bq.lock)
 
 	return bq
 }
@@ -37,10 +36,7 @@ func (bq *BlockingQueue) Put(data interface{}) bool {
 	return true
 }
 
-// Get() will read next value from queue or block until there is data. Also returns "drained" sign.
-// Given nonblocking <true> as a parameter, returns immediately with the value on top of queue or nil if it is empty.
-func (bq *BlockingQueue) Get(nonblocking ...bool) (interface{}, bool) {
-	bq.lock.Lock()
+func (bq *BlockingQueue) internalGetWithUnlock() (interface{}, bool) {
 	if bq.drained {
 		bq.lock.Unlock()
 
@@ -55,24 +51,36 @@ func (bq *BlockingQueue) Get(nonblocking ...bool) (interface{}, bool) {
 	}
 	bq.lock.Unlock()
 
-	if len(nonblocking) > 0 && nonblocking[0] {
-		return nil, false
+	return nil, false
+}
+
+// Get() will read next value from queue or block until there is data. Also returns "drained" sign.
+// Given nonblocking <true> as a parameter, returns immediately with the value on top of queue or nil if it is empty.
+func (bq *BlockingQueue) Get(nonblocking ...bool) (interface{}, bool) {
+	bq.lock.Lock()
+
+	for {
+		data, drained := bq.internalGetWithUnlock()
+		if drained {
+			return nil, true
+		}
+		if data != nil {
+			return data, false
+		} else if len(nonblocking) > 0 && nonblocking[0] {
+			return nil, false
+		}
+
+		bq.lock.Lock()
+		bq.cond.Wait()
 	}
-
-	bq.cond.L.Lock()
-	bq.cond.Wait()
-	data, drained := bq.Get(nonblocking...)
-	bq.cond.L.Unlock()
-
-	return data, drained
 }
 
 // Clears queue and releases all blocking goroutines causing them to get <nil> as data.
 // Drained queue will not receive any data.
 func (bq *BlockingQueue) Drain() {
 	bq.lock.Lock()
-	bq.queue = bq.queue[:0]
 	bq.drained = true
+	bq.queue = bq.queue[:0]
 	bq.lock.Unlock()
 
 	bq.cond.Broadcast()
