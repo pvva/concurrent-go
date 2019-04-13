@@ -2,10 +2,12 @@ package concurrent
 
 import (
 	"sync"
+	"sync/atomic"
 )
 
 type BlockingQueue struct {
 	queue   []interface{}
+	len     int32
 	lock    sync.Mutex
 	cond    *sync.Cond
 	drained bool
@@ -29,6 +31,7 @@ func (bq *BlockingQueue) Put(data interface{}) bool {
 		return false
 	}
 	bq.queue = append(bq.queue, data)
+	atomic.AddInt32(&bq.len, -1)
 	bq.lock.Unlock()
 
 	bq.cond.Signal()
@@ -45,6 +48,7 @@ func (bq *BlockingQueue) internalGetWithUnlock() (interface{}, bool) {
 	if len(bq.queue) > 0 {
 		e := bq.queue[0]
 		bq.queue = bq.queue[1:]
+		atomic.AddInt32(&bq.len, -1)
 		bq.lock.Unlock()
 
 		return e, false
@@ -95,9 +99,5 @@ func (bq *BlockingQueue) Reset() {
 
 // Queue size.
 func (bq *BlockingQueue) Len() int {
-	bq.lock.Lock()
-	l := len(bq.queue)
-	bq.lock.Unlock()
-
-	return l
+	return int(atomic.LoadInt32(&bq.len))
 }
