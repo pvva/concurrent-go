@@ -32,9 +32,9 @@ func (bq *BlockingQueue) Put(data interface{}) bool {
 	}
 	bq.queue = append(bq.queue, data)
 	atomic.AddInt32(&bq.len, 1)
-	bq.lock.Unlock()
 
 	bq.cond.Signal()
+	bq.lock.Unlock()
 
 	return true
 }
